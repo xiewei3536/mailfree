@@ -333,6 +333,20 @@ export async function authMiddleware(context) {
     return null;
   }
 
+  // 支援 POST body 中的 admin_token（兼容原版 API）
+  if (JWT_TOKEN && JWT_TOKEN.length >= 16 && request.method === 'POST') {
+    try {
+      const cloned = request.clone();
+      const body = await cloned.json();
+      if (body && body.admin_token && body.admin_token === JWT_TOKEN) {
+        context.authPayload = { role: 'admin', username: '__root__', userId: 0 };
+        return null;
+      }
+    } catch (_) {
+      // body 不是 JSON，忽略
+    }
+  }
+
   const payload = await verifyJwtWithCache(JWT_TOKEN, request.headers.get('Cookie') || '');
   if (!payload) {
     return new Response('Unauthorized', { status: 401 });
