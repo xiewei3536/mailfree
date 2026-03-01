@@ -5,43 +5,7 @@
 
 /* 增强基础变量 */
 :root {
-  --surface: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 25%, #f8fafc 50%, #fff1f2 75%, #fef3e8 100%);
-  --surface-overlay: linear-gradient(135deg, rgba(248, 250, 252, 0.85) 0%, rgba(241, 245, 249, 0.92) 100%);
-  --card: rgba(255, 255, 255, 0.88);
-  --card-hover: rgba(255, 255, 255, 0.96);
-  --card-glass: rgba(255, 255, 255, 0.65);
-  --card-glass-hover: rgba(255, 255, 255, 0.85);
-  --muted: #64748b;
-  --muted2: #94a3b8;
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --primary-light: rgba(99, 102, 241, 0.12);
-  --primary-glass: rgba(99, 102, 241, 0.06);
-  --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
-  --danger: #ef4444;
-  --danger-hover: #dc2626;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --border: #e2e8f0;
-  --border-light: #f1f5f9;
-  --border-glass: rgba(255, 255, 255, 0.25);
-  --text: #0f172a;
-  --text-light: #334155;
-  --text-inverse: #ffffff;
-  --radius: 16px;
-  --radius-sm: 10px;
-  --radius-lg: 24px;
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
-  --shadow-glass: 0 8px 32px rgba(99, 102, 241, 0.12);
-  --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.15);
-  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  --blur-md: blur(16px);
-  --blur-lg: blur(24px);
-  --blur-xl: blur(32px);
+  /* 使用 variables.css 的全域設計系統 */
 }
 
 /* 暗色模式支持 */

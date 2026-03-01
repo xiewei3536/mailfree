@@ -5,21 +5,7 @@
 
 /* 增强主题变量 */
 :root {
-  --admin-primary: #6366f1;
-  --admin-primary-hover: #4f46e5;
-  --admin-secondary: #8b5cf6;
-  --admin-accent: #ec4899;
-  --admin-success: #10b981;
-  --admin-warning: #f59e0b;
-  --admin-danger: #ef4444;
-  --admin-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
-  --admin-glass: rgba(255, 255, 255, 0.75);
-  --admin-glass-hover: rgba(255, 255, 255, 0.9);
-  --admin-shadow: 0 8px 32px rgba(99, 102, 241, 0.12);
-  --admin-shadow-lg: 0 20px 40px rgba(99, 102, 241, 0.15);
-  --admin-glow: 0 0 40px rgba(99, 102, 241, 0.15);
-  --admin-transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  --admin-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  /* 使用 variables.css 的全域設計系統 */
 }
 
 /* 顶部导航栏按钮样式 */
