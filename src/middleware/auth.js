@@ -196,7 +196,7 @@ export async function hashPassword(password) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const hash = await pbkdf2Hash(password, salt);
   const saltHex = bytesToHex(salt);
-  return \`pbkdf2:\${saltHex}:\${hash}\`;
+  return `pbkdf2:${saltHex}:${hash}`;
 }
 
 // PBKDF2 輔助函式

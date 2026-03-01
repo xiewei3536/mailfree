@@ -23,7 +23,7 @@ export async function getDatabaseWithValidation(env) {
     await db.prepare('SELECT 1').all();
     await db.prepare('PRAGMA foreign_keys = ON').run();
   } catch (error) {
-    throw new Error(\`数据库连接失败: \${error.message}\`);
+    throw new Error(`数据库连接失败: ${error.message}`);
   }
   
   return db;

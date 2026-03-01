@@ -1,9 +1,3 @@
-
-function escapeHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
 /**
  * 全局邮箱管理页面
  * @module mailboxes
@@ -383,7 +377,7 @@ async function executeBatchAction() {
     // F4: 危險操作二次確認
     const destructiveActions = { 'deny': '禁止登录', 'clear-forward': '清除转发', 'unfavorite': '取消收藏' };
     if (destructiveActions[currentBatchAction]) {
-      const confirmed = confirm(\`确定要对 \${emails.length} 个邮箱执行「\${destructiveActions[currentBatchAction]}」操作吗？此操作不可撤销。\`);
+      const confirmed = confirm(`确定要对 ${emails.length} 个邮箱执行「${destructiveActions[currentBatchAction]}」操作吗？此操作不可撤销。`);
       if (!confirmed) {
         if (btnText) btnText.style.display = 'inline';
         if (btnLoading) btnLoading.style.display = 'none';

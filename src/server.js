@@ -164,9 +164,9 @@ export default {
             const hh = String(now.getUTCHours()).padStart(2, '0');
             const mm = String(now.getUTCMinutes()).padStart(2, '0');
             const ss = String(now.getUTCSeconds()).padStart(2, '0');
-            const keyId = (globalThis.crypto?.randomUUID && crypto.randomUUID()) || \`\${Date.now()}-\${Math.random().toString(36).slice(2)}\`;
+            const keyId = (globalThis.crypto?.randomUUID && crypto.randomUUID()) || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
             const safeMailbox = (mailbox || 'unknown').toLowerCase().replace(/[^a-z0-9@._-]/g, '_');
-            objectKey = \`\${y}/\${m}/\${d}/\${safeMailbox}/\${hh}\${mm}\${ss}-\${keyId}.eml\`;
+            objectKey = `${y}/${m}/${d}/${safeMailbox}/${hh}${mm}${ss}-${keyId}.eml`;
             if (r2 && rawBuffer) {
               await r2.put(objectKey, new Uint8Array(rawBuffer), { httpMetadata: { contentType: 'message/rfc822' } });
             }
@@ -185,10 +185,10 @@ export default {
           const mailboxId = resMb?.results?.[0]?.id;
           if (!mailboxId) { console.error('无法解析或创建 mailbox 记录'); return; }
 
-          await DB.prepare(\`
+          await DB.prepare(`
             INSERT INTO messages (mailbox_id, sender, to_addrs, subject, verification_code, preview, r2_bucket, r2_object_key)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          \`).bind(
+          `).bind(
             mailboxId,
             sender,
             String(toAddrs || ''),
@@ -260,7 +260,7 @@ export default {
         `).bind(cutoff).run();
       } catch (_) {}
 
-      console.log(\`定時清理完成：刪除 \${deletedCount} 封郵件，清理 \${r2Keys.length} 個 R2 檔案\`);
+      console.log(`定時清理完成：刪除 ${deletedCount} 封郵件，清理 ${r2Keys.length} 個 R2 檔案`);
     } catch (error) {
       console.error('定時清理失敗:', error);
     }
