@@ -127,14 +127,17 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --surface: linear-gradient(160deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-    --card: rgba(30, 41, 59, 0.92);
-    --card-hover: rgba(30, 41, 59, 0.96);
-    --card-glass: rgba(30, 41, 59, 0.75);
+    --card: #1e293b;
+    --card-hover: #253449;
+    --card-glass: #1e293b;
+    --card-glass-hover: #253449;
+    --primary: #818cf8;
+    --primary-hover: #a5b4fc;
     --text: #f1f5f9;
     --text-light: #e2e8f0;
     --text-muted: #94a3b8;
     --border: #334155;
     --border-light: #1e293b;
-    --border-glass: rgba(51, 65, 85, 0.6);
+    --border-glass: rgba(148, 163, 184, 0.15);
   }
 }

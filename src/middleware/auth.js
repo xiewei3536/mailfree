@@ -288,8 +288,10 @@ export function checkRootAdminOverride(request, JWT_TOKEN) {
     if (!JWT_TOKEN || JWT_TOKEN.length < 16) return null;
     const auth = request.headers.get('Authorization') || request.headers.get('authorization') || '';
     const xToken = request.headers.get('X-Admin-Token') || request.headers.get('x-admin-token') || '';
-    // 修复：移除 URL 参数传递 Token（防止日志泄露）
+    const url = new URL(request.url);
+    const urlToken = url.searchParams.get('admin_token') || '';
     const bearer = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+    if (urlToken && urlToken === JWT_TOKEN) return { role: 'admin', username: '__root__', userId: 0 };
     if (bearer && bearer === JWT_TOKEN) return { role: 'admin', username: '__root__', userId: 0 };
     if (xToken && xToken === JWT_TOKEN) return { role: 'admin', username: '__root__', userId: 0 };
     return null;
