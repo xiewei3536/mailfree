@@ -285,7 +285,7 @@ export async function verifyJwtWithCache(JWT_TOKEN, cookieHeader) {
 export function checkRootAdminOverride(request, JWT_TOKEN) {
   try {
     // 修复：JWT_TOKEN 为空时绝不允许通过
-    if (!JWT_TOKEN || JWT_TOKEN.length < 16) return null;
+    if (!JWT_TOKEN) return null;
     const auth = request.headers.get('Authorization') || request.headers.get('authorization') || '';
     const xToken = request.headers.get('X-Admin-Token') || request.headers.get('x-admin-token') || '';
     const url = new URL(request.url);
@@ -334,7 +334,7 @@ export async function authMiddleware(context) {
   }
 
   // 支援 POST body 中的 admin_token（兼容原版 API）
-  if (JWT_TOKEN && JWT_TOKEN.length >= 16 && request.method === 'POST') {
+  if (JWT_TOKEN && request.method === 'POST') {
     try {
       const cloned = request.clone();
       const body = await cloned.json();
