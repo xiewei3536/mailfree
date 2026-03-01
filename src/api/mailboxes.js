@@ -6,6 +6,12 @@ const RATE_LIMIT_MAX = 30; // 每分鐘最多 30 次
 
 function checkRateLimit(key) {
   const now = Date.now();
+  // 懶清理：每次檢查時順便清除過期條目
+  if (rateLimitMap.size > 100) {
+    for (const [k, v] of rateLimitMap.entries()) {
+      if (now - v.start > RATE_LIMIT_WINDOW * 2) rateLimitMap.delete(k);
+    }
+  }
   const entry = rateLimitMap.get(key);
   if (!entry || now - entry.start > RATE_LIMIT_WINDOW) {
     rateLimitMap.set(key, { start: now, count: 1 });
@@ -16,13 +22,7 @@ function checkRateLimit(key) {
   return true;
 }
 
-// 定期清理過期條目
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, val] of rateLimitMap.entries()) {
-    if (now - val.start > RATE_LIMIT_WINDOW * 2) rateLimitMap.delete(key);
-  }
-}, 120000);
+
 /**
  * 邮箱管理 API 模块
  * @module api/mailboxes
