@@ -1,3 +1,9 @@
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
 /**
  * 全局邮箱管理页面
  * @module mailboxes
@@ -251,7 +257,7 @@ function openPasswordModal(address, isDefault) {
     // 设置新密码
     if (els.passwordModalIcon) els.passwordModalIcon.textContent = '🔐';
     if (els.passwordModalTitle) els.passwordModalTitle.textContent = '设置密码';
-    if (els.passwordModalMessage) els.passwordModalMessage.innerHTML = `为 <strong>${address}</strong> 设置新密码：`;
+    if (els.passwordModalMessage) els.passwordModalMessage.innerHTML = `为 <strong>${escapeHtml(address)}</strong> 设置新密码：`;
     if (els.passwordInputWrapper) els.passwordInputWrapper.style.display = 'block';
     if (els.passwordNewInput) els.passwordNewInput.value = '';
     if (els.passwordShowToggle) els.passwordShowToggle.checked = false;
@@ -260,7 +266,7 @@ function openPasswordModal(address, isDefault) {
     // 重置密码
     if (els.passwordModalIcon) els.passwordModalIcon.textContent = '🔓';
     if (els.passwordModalTitle) els.passwordModalTitle.textContent = '重置密码';
-    if (els.passwordModalMessage) els.passwordModalMessage.innerHTML = `确定将 <strong>${address}</strong> 的密码重置为默认密码（邮箱地址）？`;
+    if (els.passwordModalMessage) els.passwordModalMessage.innerHTML = `确定将 <strong>${escapeHtml(address)}</strong> 的密码重置为默认密码（邮箱地址）？`;
     if (els.passwordInputWrapper) els.passwordInputWrapper.style.display = 'none';
   }
   
@@ -374,6 +380,17 @@ async function executeBatchAction() {
   if (els.batchModalConfirm) els.batchModalConfirm.disabled = true;
   
   try {
+    // F4: 危險操作二次確認
+    const destructiveActions = { 'deny': '禁止登录', 'clear-forward': '清除转发', 'unfavorite': '取消收藏' };
+    if (destructiveActions[currentBatchAction]) {
+      const confirmed = confirm(\`确定要对 \${emails.length} 个邮箱执行「\${destructiveActions[currentBatchAction]}」操作吗？此操作不可撤销。\`);
+      if (!confirmed) {
+        if (btnText) btnText.style.display = 'inline';
+        if (btnLoading) btnLoading.style.display = 'none';
+        if (els.batchModalConfirm) els.batchModalConfirm.disabled = false;
+        return;
+      }
+    }
     let result;
     switch (currentBatchAction) {
       case 'allow':
@@ -427,7 +444,11 @@ async function executeBatchAction() {
 
 // 事件绑定
 els.search?.addEventListener('click', () => { page = 1; load(); });
-els.q?.addEventListener('input', () => { if (searchTimeout) clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { page = 1; load(); }, 300); });
+// F5: IME 組字相容
+let isComposing = false;
+els.q?.addEventListener('compositionstart', () => { isComposing = true; });
+els.q?.addEventListener('compositionend', () => { isComposing = false; if (searchTimeout) clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { page = 1; load(); }, 300); });
+els.q?.addEventListener('input', () => { if (isComposing) return; if (searchTimeout) clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { page = 1; load(); }, 300); });
 els.q?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); page = 1; load(); }});
 els.prev?.addEventListener('click', () => { if (page > 1 && !isLoading) { page--; load(); }});
 els.next?.addEventListener('click', () => { 

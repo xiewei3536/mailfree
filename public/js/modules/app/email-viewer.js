@@ -33,13 +33,13 @@ export async function showEmailDetail(id, elements, api, showToast) {
       contentHtml += `
         <div class="verification-code-box" style="margin-bottom:16px;padding:12px;background:var(--success-light);border-radius:8px;display:flex;align-items:center;gap:12px">
           <span style="font-size:20px">🔑</span>
-          <span style="font-size:18px;font-weight:600;font-family:monospace;cursor:pointer" onclick="navigator.clipboard.writeText('${code}').then(()=>showToast('验证码已复制','success'))">${code}</span>
+          <span style="font-size:18px;font-weight:600;font-family:monospace;cursor:pointer" onclick="navigator.clipboard.writeText('${escapeAttr(code)}').then(()=>showToast('验证码已复制','success'))">${escapeHtml(code)}</span>
           <span style="font-size:12px;color:var(--text-muted)">点击复制</span>
         </div>`;
     }
     
     if (email.html_content) {
-      contentHtml += `<iframe class="email-frame" srcdoc="${escapeAttr(email.html_content)}" style="width:100%;min-height:400px;border:none"></iframe>`;
+      contentHtml += `<iframe class="email-frame" sandbox="allow-popups allow-popups-to-escape-sandbox" srcdoc="${escapeAttr(email.html_content)}" style="width:100%;min-height:400px;border:none"></iframe>`;
     } else {
       contentHtml += `<pre style="white-space:pre-wrap;word-break:break-word">${escapeHtml(email.content || '')}</pre>`;
     }

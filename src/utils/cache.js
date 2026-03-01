@@ -5,9 +5,9 @@
 
 // 缓存过期时间常量（毫秒）
 const CACHE_EXPIRY = {
-  MAILBOX_ID: 5 * 60 * 1000,      // 邮箱ID缓存5分钟
+  MAILBOX_ID: 30 * 60 * 1000,      // 邮箱ID缓存5分钟
   USER_QUOTA: 60 * 1000,           // 用户配额缓存1分钟
-  SYSTEM_STAT: 5 * 60 * 1000,      // 系统统计缓存5分钟
+  SYSTEM_STAT: 30 * 60 * 1000,      // 系统统计缓存5分钟
 };
 
 // 缓存存储

@@ -16,6 +16,24 @@ import { handleEmailReceive } from '../email/receiver.js';
 export function createRouter() {
   const router = new Router();
 
+  // =================== 健康檢查 ===================
+  router.get('/api/health', async (context) => {
+    const { env } = context;
+    let dbOk = false;
+    try {
+      const DB = env.TEMP_MAIL_DB;
+      if (DB) {
+        await DB.prepare('SELECT 1').first();
+        dbOk = true;
+      }
+    } catch (_) {}
+    return Response.json({
+      status: dbOk ? 'ok' : 'degraded',
+      db: dbOk,
+      ts: Date.now()
+    }, { status: dbOk ? 200 : 503 });
+  });
+
   // =================== 认证相关路由 ===================
   router.post('/api/login', async (context) => {
     const { request, env } = context;
@@ -119,6 +137,8 @@ export function createRouter() {
         // 继续
       }
 
+      // 修复：防計時攻擊 - 不論帳號是否存在都執行一次雜湊運算
+      await verifyPassword('dummy_password_for_timing', 'pbkdf2:0000000000000000000000000000000000000000:0000000000000000000000000000000000000000000000000000000000000000');
       return new Response('用户名或密码错误', { status: 401 });
     } catch (_) {
       return new Response('Bad Request', { status: 400 });

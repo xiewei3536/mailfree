@@ -38,10 +38,9 @@ export function isStrictAdmin(request, options = {}) {
   if (p.role !== 'admin') return false;
   // __root__（根管理员）视为严格管理员
   if (String(p.username || '') === '__root__') return true;
-  if (options?.adminName) {
-    return String(p.username || '').toLowerCase() === String(options.adminName || '').toLowerCase();
-  }
-  return true;
+  // 修复：adminName 未设定时不应将所有 admin 视为严格管理员
+  if (!options?.adminName) return false;
+  return String(p.username || '').toLowerCase() === String(options.adminName).toLowerCase();
 }
 
 /**
@@ -67,4 +66,25 @@ export function errorResponse(message, status = 400) {
   return new Response(message, { status });
 }
 
+// B8: 標準化錯誤回應
+export const ERR = {
+  BAD_REQUEST: (msg = '请求参数错误') => errorResponse(msg, 400),
+  UNAUTHORIZED: (msg = '未登录或登录已过期') => errorResponse(msg, 401),
+  FORBIDDEN: (msg = '无权限执行此操作') => errorResponse(msg, 403),
+  NOT_FOUND: (msg = '资源不存在') => errorResponse(msg, 404),
+  RATE_LIMITED: (msg = '请求过于频繁，请稍后再试') => errorResponse(msg, 429),
+  SERVER_ERROR: (msg = '服务器内部错误') => errorResponse(msg, 500),
+};
+
 export { sha256Hex };
+
+// B6: 統一分頁回應格式
+export function paginatedResponse(list, total, page = 1, size = 20) {
+  return Response.json({
+    list: list || [],
+    total: total || 0,
+    page,
+    size,
+    hasMore: total > page * size
+  });
+}

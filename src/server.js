@@ -104,14 +104,15 @@ export default {
         forwardByLocalPart(message, localPart, ctx, env);
       }
 
-      // 读取原始邮件内容
+      // 读取原始邮件内容（限制解析大小防止 CPU 超时）
+      const MAX_PARSE_SIZE = 256 * 1024; // B2: 256KB 限制
       let textContent = '';
       let htmlContent = '';
       let rawBuffer = null;
       try {
         const resp = new Response(message.raw);
         rawBuffer = await resp.arrayBuffer();
-        const rawText = await new Response(rawBuffer).text();
+        const rawText = (await new Response(rawBuffer).text()).slice(0, MAX_PARSE_SIZE);
         const parsed = parseEmailBody(rawText);
         textContent = parsed.text || '';
         htmlContent = parsed.html || '';
@@ -124,28 +125,7 @@ export default {
       const mailbox = extractEmail(resolvedRecipient || toHeader);
       const sender = extractEmail(fromHeader);
 
-      // 存储到 R2
-      const r2 = env.MAIL_EML;
-      let objectKey = '';
-      try {
-        const now = new Date();
-        const y = now.getUTCFullYear();
-        const m = String(now.getUTCMonth() + 1).padStart(2, '0');
-        const d = String(now.getUTCDate()).padStart(2, '0');
-        const hh = String(now.getUTCHours()).padStart(2, '0');
-        const mm = String(now.getUTCMinutes()).padStart(2, '0');
-        const ss = String(now.getUTCSeconds()).padStart(2, '0');
-        const keyId = (globalThis.crypto?.randomUUID && crypto.randomUUID()) || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        const safeMailbox = (mailbox || 'unknown').toLowerCase().replace(/[^a-z0-9@._-]/g, '_');
-        objectKey = `${y}/${m}/${d}/${safeMailbox}/${hh}${mm}${ss}-${keyId}.eml`;
-        if (r2 && rawBuffer) {
-          await r2.put(objectKey, new Uint8Array(rawBuffer), { httpMetadata: { contentType: 'message/rfc822' } });
-        }
-      } catch (e) {
-        console.error('R2 put failed:', e);
-      }
-
-      // 生成预览和验证码
+      // 生成预览和验证码（同步，轻量操作）
       const preview = (() => {
         const plain = textContent && textContent.trim() ? textContent : (htmlContent || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
         return String(plain || '').slice(0, 120);
@@ -154,22 +134,6 @@ export default {
       try {
         verificationCode = extractVerificationCode({ subject, text: textContent, html: htmlContent });
       } catch (_) { }
-
-      // 存储到数据库
-      const resMb = await DB.prepare('SELECT id FROM mailboxes WHERE address = ?').bind(mailbox.toLowerCase()).all();
-      let mailboxId;
-      if (Array.isArray(resMb?.results) && resMb.results.length) {
-        mailboxId = resMb.results[0].id;
-      } else {
-        const [localPartMb, domain] = (mailbox || '').toLowerCase().split('@');
-        if (localPartMb && domain) {
-          await DB.prepare('INSERT INTO mailboxes (address, local_part, domain, password_hash, last_accessed_at) VALUES (?, ?, ?, NULL, CURRENT_TIMESTAMP)')
-            .bind((mailbox || '').toLowerCase(), localPartMb, domain).run();
-          const created = await DB.prepare('SELECT id FROM mailboxes WHERE address = ?').bind((mailbox || '').toLowerCase()).all();
-          mailboxId = created?.results?.[0]?.id;
-        }
-      }
-      if (!mailboxId) throw new Error('无法解析或创建 mailbox 记录');
 
       // 解析收件人列表
       let toAddrs = '';
@@ -186,22 +150,119 @@ export default {
         toAddrs = resolvedRecipient || toHeader || '';
       }
 
-      // 插入消息记录
-      await DB.prepare(`
-        INSERT INTO messages (mailbox_id, sender, to_addrs, subject, verification_code, preview, r2_bucket, r2_object_key)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        mailboxId,
-        sender,
-        String(toAddrs || ''),
-        subject || '(无主题)',
-        verificationCode || null,
-        preview || null,
-        'mail-eml',
-        objectKey || ''
-      ).run();
+      // B1: 使用 ctx.waitUntil 包裹非關鍵的 R2 + D1 寫入操作
+      ctx.waitUntil((async () => {
+        try {
+          // R2 存储
+          const r2 = env.MAIL_EML;
+          let objectKey = '';
+          try {
+            const now = new Date();
+            const y = now.getUTCFullYear();
+            const m = String(now.getUTCMonth() + 1).padStart(2, '0');
+            const d = String(now.getUTCDate()).padStart(2, '0');
+            const hh = String(now.getUTCHours()).padStart(2, '0');
+            const mm = String(now.getUTCMinutes()).padStart(2, '0');
+            const ss = String(now.getUTCSeconds()).padStart(2, '0');
+            const keyId = (globalThis.crypto?.randomUUID && crypto.randomUUID()) || \`\${Date.now()}-\${Math.random().toString(36).slice(2)}\`;
+            const safeMailbox = (mailbox || 'unknown').toLowerCase().replace(/[^a-z0-9@._-]/g, '_');
+            objectKey = \`\${y}/\${m}/\${d}/\${safeMailbox}/\${hh}\${mm}\${ss}-\${keyId}.eml\`;
+            if (r2 && rawBuffer) {
+              await r2.put(objectKey, new Uint8Array(rawBuffer), { httpMetadata: { contentType: 'message/rfc822' } });
+            }
+          } catch (e) {
+            console.error('R2 put failed:', e);
+          }
+
+          // D1 存储
+          const normalizedMailbox = (mailbox || '').toLowerCase();
+          const [localPartMb, domain] = normalizedMailbox.split('@');
+          if (localPartMb && domain) {
+            await DB.prepare('INSERT OR IGNORE INTO mailboxes (address, local_part, domain, password_hash, last_accessed_at) VALUES (?, ?, ?, NULL, CURRENT_TIMESTAMP)')
+              .bind(normalizedMailbox, localPartMb, domain).run();
+          }
+          const resMb = await DB.prepare('SELECT id FROM mailboxes WHERE address = ?').bind(normalizedMailbox).all();
+          const mailboxId = resMb?.results?.[0]?.id;
+          if (!mailboxId) { console.error('无法解析或创建 mailbox 记录'); return; }
+
+          await DB.prepare(\`
+            INSERT INTO messages (mailbox_id, sender, to_addrs, subject, verification_code, preview, r2_bucket, r2_object_key)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          \`).bind(
+            mailboxId,
+            sender,
+            String(toAddrs || ''),
+            subject || '(无主题)',
+            verificationCode || null,
+            preview || null,
+            'mail-eml',
+            objectKey || ''
+          ).run();
+        } catch (e) {
+          console.error('Background storage failed:', e);
+        }
+      })());
     } catch (err) {
       console.error('Email event handling error:', err);
+      // B5: 處理失敗時退信，讓寄件方 MTA 自動重試
+      try { message.setReject('Temporary failure, please retry later.'); } catch (_) {}
+    }
+  },
+
+  /**
+   * 定時任務處理器 - 自動清理超過 24 小時的郵件
+   * @param {ScheduledEvent} event - 定時事件
+   * @param {object} env - 環境變數
+   * @param {object} ctx - 上下文
+   */
+  async scheduled(event, env, ctx) {
+    let DB;
+    try {
+      DB = await getInitializedDatabase(env);
+    } catch (error) {
+      console.error('定時清理：資料庫連線失敗:', error.message);
+      return;
+    }
+
+    const r2 = env.MAIL_EML;
+    const retentionHours = parseInt(env.MAIL_RETENTION_HOURS, 10) || 24;
+    const cutoff = new Date(Date.now() - retentionHours * 60 * 60 * 1000).toISOString();
+
+    try {
+      // 1. 取得即將刪除的郵件的 R2 keys
+      let r2Keys = [];
+      try {
+        const msgs = await DB.prepare(
+          "SELECT r2_object_key FROM messages WHERE received_at < ? AND r2_object_key != ''"
+        ).bind(cutoff).all();
+        r2Keys = (msgs?.results || []).map(r => r.r2_object_key).filter(Boolean);
+      } catch (_) {}
+
+      // 2. 刪除過期郵件記錄
+      const result = await DB.prepare('DELETE FROM messages WHERE received_at < ?').bind(cutoff).run();
+      const deletedCount = result?.meta?.changes || 0;
+
+      // 3. 非同步清理 R2 檔案（批次處理，每批 100 個）
+      if (r2 && r2Keys.length > 0) {
+        for (let i = 0; i < r2Keys.length; i += 100) {
+          const batch = r2Keys.slice(i, i + 100);
+          await Promise.all(batch.map(key => r2.delete(key).catch(() => {})));
+        }
+      }
+
+      // 4. 清理無郵件的空郵箱（可選，保留有使用者綁定的）
+      try {
+        await DB.prepare(`
+          DELETE FROM mailboxes 
+          WHERE id NOT IN (SELECT DISTINCT mailbox_id FROM messages)
+            AND id NOT IN (SELECT DISTINCT mailbox_id FROM user_mailboxes)
+            AND last_accessed_at < ?
+        `).bind(cutoff).run();
+      } catch (_) {}
+
+      console.log(\`定時清理完成：刪除 \${deletedCount} 封郵件，清理 \${r2Keys.length} 個 R2 檔案\`);
+    } catch (error) {
+      console.error('定時清理失敗:', error);
     }
   }
 };

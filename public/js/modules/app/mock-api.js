@@ -155,7 +155,9 @@ export async function mockApi(path, options = {}) {
   if (url.pathname === '/api/generate') {
     const len = Number(url.searchParams.get('length') || '8');
     const id = mockGenerateId(len);
-    const domain = MOCK_STATE.domains[Number(url.searchParams.get('domainIndex') || 0)] || 'example.com';
+    const diParam = url.searchParams.get('domainIndex');
+    const diVal = (diParam === null || diParam === '' || Number(diParam) < 0) ? Math.floor(Math.random() * MOCK_STATE.domains.length) : Number(diParam);
+    const domain = MOCK_STATE.domains[Math.max(0, Math.min(MOCK_STATE.domains.length - 1, diVal))] || 'example.com';
     const email = `${id}@${domain}`;
     const newMailbox = { 
       id: MOCK_STATE.nextMailboxId++,
@@ -272,7 +274,7 @@ export async function mockApi(path, options = {}) {
       if (!/^[A-Za-z0-9._-]{1,64}$/.test(local)) {
         return new Response('非法用户名', { status: 400 });
       }
-      const domainIndex = Number(body.domainIndex || 0);
+      const domainIndex = (body.domainIndex === undefined || body.domainIndex === null || Number(body.domainIndex) < 0) ? Math.floor(Math.random() * MOCK_STATE.domains.length) : Number(body.domainIndex);
       const domain = MOCK_STATE.domains[Math.max(0, Math.min(MOCK_STATE.domains.length - 1, domainIndex))] || 'example.com';
       const email = `${local}@${domain}`;
       

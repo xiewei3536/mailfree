@@ -243,7 +243,7 @@ code,
 
 body{
   margin: 0;
-  min-height: 100vh;
+  min-height: calc(var(--vh, 1vh) * 100);
   background: var(--surface);
   background-attachment: fixed;
   font-family: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -488,7 +488,7 @@ body::after{
   grid-template-columns: 320px 1fr;
   gap: 24px;
   align-items: start;
-  min-height: calc(100vh - 100px);
+  min-height: calc(var(--vh, 1vh) * 100 - 100px);
 }
 
 /* ===== 增强侧边栏 ===== */
@@ -505,7 +505,7 @@ body::after{
   transition: all 0.4s var(--ease-out-expo);
   width: auto;
   min-width: 280px;
-  max-height: calc(100vh - 140px);
+  max-height: calc(var(--vh, 1vh) * 100 - 140px);
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -3147,7 +3147,7 @@ select:disabled{
   .mailbox-layout{ grid-template-columns: 1fr 1fr; gap: 12px; }
   .mailbox-actions .btn{ height: 44px; font-size: 13px; }
   .email-display{ padding: 12px; font-size: 14px; }
-  .list-viewport{ max-height: calc(100vh - 260px); overflow: auto; }
+  .list-viewport{ max-height: calc(var(--vh, 1vh) * 100 - 260px); overflow: auto; }
 }
 
 /* mailboxes 页面搜索条样式 */

@@ -71,6 +71,10 @@ export class AssetManager {
   }
 
   isPathAllowed(pathname) {
+    // 修复：防止目錄遍歷攻擊
+    if (pathname.includes('..') || pathname.includes('\\') || pathname.includes('//')) {
+      return false;
+    }
     if (this.allowedPaths.has(pathname)) {
       return true;
     }
@@ -125,7 +129,16 @@ export class AssetManager {
       return await this.handleAllMailboxesPage(mappedRequest, env, JWT_TOKEN);
     }
 
-    return env.ASSETS.fetch(mappedRequest);
+    // B12: 靜態資源快取控制
+    const resp = await env.ASSETS.fetch(mappedRequest);
+    const cacheHeaders = new Headers(resp.headers);
+    const ext = pathname.match(/\.(js|css|woff2?|png|jpg|jpeg|gif|svg|ico)$/);
+    if (ext) {
+      cacheHeaders.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+    } else if (pathname.endsWith('.html') || pathname === '/') {
+      cacheHeaders.set('Cache-Control', 'public, max-age=0, must-revalidate');
+    }
+    return new Response(resp.body, { status: resp.status, statusText: resp.statusText, headers: cacheHeaders });
   }
 
   async handleIllegalPath(request, env, JWT_TOKEN) {

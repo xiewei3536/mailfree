@@ -11,6 +11,19 @@ import { startAutoRefresh, stopAutoRefresh } from './auto-refresh.js';
 import { resetPager } from './email-list.js';
 import { resetMbPage } from './mailbox-list.js';
 
+
+// F2: 防抖鎖 — 防止快速點擊重複請求
+function withLock(fn) {
+  let locked = false;
+  return async (...args) => {
+    if (locked) return;
+    locked = true;
+    try { return await fn(...args); }
+    finally { locked = false; }
+  };
+}
+
+
 /**
  * 生成随机邮箱
  * @param {object} elements - DOM 元素
@@ -328,10 +341,15 @@ export async function logout(api) {
   window.location.replace('/html/login.html');
 }
 
+// F2: 包裹防抖鎖的導出版本
+const generateMailboxSafe = withLock(generateMailbox);
+const generateNameMailboxSafe = withLock(generateNameMailbox);
+const createCustomMailboxSafe = withLock(createCustomMailbox);
+
 export default {
-  generateMailbox,
-  generateNameMailbox,
-  createCustomMailbox,
+  generateMailbox: generateMailboxSafe,
+  generateNameMailbox: generateNameMailboxSafe,
+  createCustomMailbox: createCustomMailboxSafe,
   updateEmailDisplay,
   selectMailboxAddress,
   toggleMailboxPin,

@@ -253,7 +253,7 @@
   .mailbox-layout{ grid-template-columns: 1fr 1fr; gap: 12px; }
   .mailbox-actions .btn{ height: 44px; font-size: 13px; }
   .email-display{ padding: 12px; font-size: 14px; }
-  .list-viewport{ max-height: calc(100vh - 260px); overflow: auto; }
+  .list-viewport{ max-height: calc(var(--vh, 1vh) * 100 - 260px); overflow: auto; }
 }
 
 

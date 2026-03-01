@@ -81,7 +81,7 @@ export async function handleEmailsApi(request, db, url, path, options) {
     try {
       const idsParam = String(url.searchParams.get('ids') || '').trim();
       if (!idsParam) return Response.json([]);
-      const ids = idsParam.split(',').map(s => parseInt(s, 10)).filter(n => Number.isInteger(n) && n > 0);
+      const ids = idsParam.split(',').map(s => parseInt(s, 10)).filter(n => Number.isInteger(n) && n > 0 && n < 2147483647);
       if (!ids.length) return Response.json([]);
       
       if (ids.length > 50) {
@@ -168,7 +168,8 @@ export async function handleEmailsApi(request, db, url, path, options) {
 
   // 获取单封邮件详情
   if (request.method === 'GET' && path.startsWith('/api/email/')) {
-    const emailId = path.split('/')[3];
+    const emailId = parseInt(path.split('/')[3], 10);
+    if (!Number.isInteger(emailId) || emailId <= 0) return errorResponse('无效的邮件ID', 400);
     if (isMock) {
       return Response.json(buildMockEmailDetail(emailId));
     }

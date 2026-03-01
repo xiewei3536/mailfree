@@ -168,8 +168,19 @@ async function sha256Hex(text) {
 export async function verifyPassword(rawPassword, hashed) {
   if (!hashed) return false;
   try {
+    const stored = String(hashed || '');
+    // 支援新格式 (pbkdf2:salt:hash) 和舊格式 (純 SHA-256)
+    if (stored.startsWith('pbkdf2:')) {
+      const parts = stored.split(':');
+      if (parts.length !== 3) return false;
+      const salt = hexToBytes(parts[1]);
+      const expectedHash = parts[2].toLowerCase();
+      const derivedHash = await pbkdf2Hash(rawPassword, salt);
+      return timingSafeEqual(derivedHash, expectedHash);
+    }
+    // 向後兼容：舊格式純 SHA-256
     const hex = (await sha256Hex(rawPassword)).toLowerCase();
-    return hex === String(hashed || '').toLowerCase();
+    return timingSafeEqual(hex, stored.toLowerCase());
   } catch (_) {
     return false;
   }
@@ -181,7 +192,37 @@ export async function verifyPassword(rawPassword, hashed) {
  * @returns {Promise<string>} 哈希后的密码
  */
 export async function hashPassword(password) {
-  return await sha256Hex(password);
+  // 使用 PBKDF2 加鹽雜湊
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hash = await pbkdf2Hash(password, salt);
+  const saltHex = bytesToHex(salt);
+  return \`pbkdf2:\${saltHex}:\${hash}\`;
+}
+
+// PBKDF2 輔助函式
+async function pbkdf2Hash(password, salt) {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, 256);
+  return bytesToHex(new Uint8Array(bits));
+}
+
+function bytesToHex(bytes) {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToBytes(hex) {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+  return bytes;
+}
+
+// 防計時攻擊的常數時間比較
+function timingSafeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return result === 0;
 }
 
 function base64UrlEncode(data) {
@@ -243,18 +284,14 @@ export async function verifyJwtWithCache(JWT_TOKEN, cookieHeader) {
  */
 export function checkRootAdminOverride(request, JWT_TOKEN) {
   try {
-    if (!JWT_TOKEN) return null;
+    // 修复：JWT_TOKEN 为空时绝不允许通过
+    if (!JWT_TOKEN || JWT_TOKEN.length < 16) return null;
     const auth = request.headers.get('Authorization') || request.headers.get('authorization') || '';
     const xToken = request.headers.get('X-Admin-Token') || request.headers.get('x-admin-token') || '';
-    let urlToken = '';
-    try {
-      const u = new URL(request.url);
-      urlToken = u.searchParams.get('admin_token') || '';
-    } catch (_) { }
+    // 修复：移除 URL 参数传递 Token（防止日志泄露）
     const bearer = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
     if (bearer && bearer === JWT_TOKEN) return { role: 'admin', username: '__root__', userId: 0 };
     if (xToken && xToken === JWT_TOKEN) return { role: 'admin', username: '__root__', userId: 0 };
-    if (urlToken && urlToken === JWT_TOKEN) return { role: 'admin', username: '__root__', userId: 0 };
     return null;
   } catch (_) {
     return null;

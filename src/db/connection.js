@@ -18,11 +18,12 @@ export async function getDatabaseWithValidation(env) {
     throw new Error('数据库未配置，请检查 wrangler.toml 中的 [[d1_databases]] 绑定');
   }
   
-  // 验证数据库连接
+  // 验证数据库连接并啟用外鍵約束
   try {
     await db.prepare('SELECT 1').all();
+    await db.prepare('PRAGMA foreign_keys = ON').run();
   } catch (error) {
-    throw new Error(`数据库连接失败: ${error.message}`);
+    throw new Error(\`数据库连接失败: \${error.message}\`);
   }
   
   return db;

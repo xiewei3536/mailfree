@@ -4,6 +4,7 @@
  */
 
 import { getJwtPayload, isStrictAdmin, sha256Hex, errorResponse } from './helpers.js';
+import { hashPassword } from '../middleware/auth.js';
 import { invalidateMailboxCache, invalidateSystemStatCache } from '../utils/cache.js';
 import { getMailboxIdByAddress } from '../db/index.js';
 import {
@@ -45,10 +46,21 @@ export async function handleMailboxAdminApi(request, db, url, path, options) {
         if (!own?.results?.length) return errorResponse('Forbidden', 403);
       }
 
-      try { await db.exec('BEGIN'); } catch (_) { }
+      // 修复：刪除前先取得 R2 object keys 以便清理
+      let r2Keys = [];
+      try {
+        const msgs = await db.prepare("SELECT r2_object_key FROM messages WHERE mailbox_id = ? AND r2_object_key != ''").bind(mailboxId).all();
+        r2Keys = (msgs?.results || []).map(r => r.r2_object_key).filter(Boolean);
+      } catch (_) {}
+
       await db.prepare('DELETE FROM messages WHERE mailbox_id = ?').bind(mailboxId).run();
       const deleteResult = await db.prepare('DELETE FROM mailboxes WHERE id = ?').bind(mailboxId).run();
-      try { await db.exec('COMMIT'); } catch (_) { }
+
+      // 非同步清理 R2 檔案（不阻塞回應）
+      if (r2Keys.length > 0 && options.r2) {
+        const r2 = options.r2;
+        Promise.all(r2Keys.map(key => r2.delete(key).catch(() => {}))).catch(() => {});
+      }
 
       const deleted = (deleteResult?.meta?.changes || 0) > 0;
 
@@ -118,7 +130,7 @@ export async function handleMailboxAdminApi(request, db, url, path, options) {
         return errorResponse('邮箱不存在', 404);
       }
 
-      const newPasswordHash = await sha256Hex(newPassword);
+      const newPasswordHash = await hashPassword(newPassword);
 
       await db.prepare('UPDATE mailboxes SET password_hash = ? WHERE address = ?')
         .bind(newPasswordHash, address).run();
@@ -337,7 +349,7 @@ export async function handleMailboxAdminApi(request, db, url, path, options) {
         return errorResponse('当前密码错误', 400);
       }
 
-      const newPasswordHash = await sha256Hex(newPassword);
+      const newPasswordHash = await hashPassword(newPassword);
 
       await db.prepare('UPDATE mailboxes SET password_hash = ? WHERE id = ?')
         .bind(newPasswordHash, mailboxId).run();

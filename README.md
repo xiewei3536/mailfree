@@ -1,6 +1,5 @@
 # Freemail - 临时邮箱服务
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/idinging/freemail)
 
 一个基于 Cloudflare Workers + D1 + R2 构建的**开源临时邮箱服务**，支持邮件接收、发送、转发、用户管理等完整功能。
 
@@ -11,10 +10,7 @@
 📖 **[一键部署指南](docs/yijianbushu.md)** | 📬 **[Resend 发件配置](docs/resend.md)** | 📚 **[API 文档](docs/api.md)**
 
 ## 📸 项目展示
-### 体验地址： https://mailexhibit.dinging.top/
 
-### 体验账号： guest
-### 体验密码： admin
 ### 页面展示
 
 #### 登陆
@@ -48,6 +44,7 @@
 | ✉️ **发件支持** | Resend API 集成 · 多域名密钥 · 批量发送 · 定时发送 · 发件记录 |
 | 👥 **用户管理** | 三层权限模型 · 用户/邮箱分配 · 邮箱单点登录 · 登录权限控制 |
 | 🎨 **现代界面** | 毛玻璃效果 · 响应式设计 · 移动端适配 · 列表/卡片视图 |
+| 🗑️ **自动清理** | 定时清理过期邮件（默认24小时） · R2 存储同步清理 · 空邮箱回收 |
 | ⚡ **技术架构** | Cloudflare Workers · D1 数据库 · R2 存储 · Email Routing |
 
 > 💡 邮箱用户自行修改密码功能默认关闭，如需开启请将 `mailbox.html` 第 77-80 行取消注释。
@@ -99,6 +96,7 @@
 1. **一键部署**：点击顶部按钮，按照 [部署指南](docs/yijianbushu.md) 完成配置
 2. **配置邮件路由**（收件必需）：域名 → Email Routing → Catch-all → 绑定 Worker
 3. **配置发件**（可选）：参考 [Resend 配置教程](docs/resend.md)
+4. **自动清理**（已内置）：Cron Trigger 每小时自动清理超过 24 小时的邮件，可通过 `MAIL_RETENTION_HOURS` 调整保留时长
 
 > 使用 Git 集成部署时，请在 Workers → Settings → Variables 中手动配置环境变量
 
@@ -114,6 +112,7 @@
 | JWT_TOKEN | JWT 签名密钥 | 是 |
 | RESEND_API_KEY | Resend 发件密钥，支持多域名配置 | 否 |
 | FORWARD_RULES | 邮件转发规则 | 否 |
+| MAIL_RETENTION_HOURS | 邮件保留时长（小时），默认 `24` | 否 |
 
 <details>
 <summary><strong>RESEND_API_KEY 配置格式</strong></summary>
@@ -157,6 +156,21 @@ FORWARD_RULES="" 或 "disabled" 或 "none"
 ```
 </details>
 
+## 安全说明
+
+> 本版本已修复多项安全问题，建议所有用户更新至最新版本。
+
+- **密码安全**：使用 PBKDF2（100K 迭代）加盐哈希，向后兼容旧版 SHA-256 格式
+- **XSS 防护**：邮件 HTML 内容通过 `sandbox` iframe 隔离渲染
+- **CSP 策略**：所有页面已启用 Content Security Policy
+- **权限控制**：修复了 `isStrictAdmin` 权限绕过漏洞，移除了 URL Token 认证
+- **数据清理**：定时任务每小时自动清理过期邮件及 R2 存储文件
+
+⚠️ **重要安全提醒**：
+1. `JWT_TOKEN` 必须为 16 字符以上的随机字符串
+2. 生产环境务必修改 `ADMIN_PASSWORD`，不要使用默认值
+3. 不要在 `wrangler.toml` 中硬编码敏感信息，使用 `wrangler secret put` 管理密钥
+
 ## 故障排除
 
 <details>
@@ -186,25 +200,9 @@ wrangler d1 execute TEMP_MAIL_DB --command "SELECT * FROM mailboxes LIMIT 10"
 ## 注意事项
 
 - **静态资源缓存**：更新后在 Cloudflare 控制台 Purge Everything，浏览器强制刷新
-- **R2/D1 费用**：有免费额度限制，建议定期清理过期邮件
-- **安全**：生产环境务必修改默认的 `ADMIN_PASSWORD` 和 `JWT_TOKEN`
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=idinging/freemail&type=Date)](https://www.star-history.com/#idinging/freemail&Date)
-
-## 联系方式
-
-- 微信：`iYear1213`
-
-## Buy me a coffee
-
-如果你觉得本项目对你有帮助，欢迎赞赏支持：
-
-<p align="left">
-  <img src="pic/alipay.jpg" alt="支付宝赞赏码" height="400" />
-  <img src="pic/weichat.jpg" alt="微信赞赏码" height="400" />
-</p>
+- **R2/D1 费用**：有免费额度限制，系统已内置每小时自动清理过期邮件
+- **安全**：生产环境务必修改默认的 `ADMIN_PASSWORD`，`JWT_TOKEN` 须 ≥ 16 字符
+- **密码兼容**：升级后旧密码仍可使用，新设/改密会自动升级为 PBKDF2 加盐格式
 
 ## 许可证
 

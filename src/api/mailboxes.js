@@ -1,3 +1,28 @@
+
+// B9: 簡易記憶體速率限制
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 分鐘
+const RATE_LIMIT_MAX = 30; // 每分鐘最多 30 次
+
+function checkRateLimit(key) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+  if (!entry || now - entry.start > RATE_LIMIT_WINDOW) {
+    rateLimitMap.set(key, { start: now, count: 1 });
+    return true;
+  }
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) return false;
+  return true;
+}
+
+// 定期清理過期條目
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of rateLimitMap.entries()) {
+    if (now - val.start > RATE_LIMIT_WINDOW * 2) rateLimitMap.delete(key);
+  }
+}, 120000);
 /**
  * 邮箱管理 API 模块
  * @module api/mailboxes
@@ -37,10 +62,16 @@ export async function handleMailboxesApi(request, db, mailDomains, url, path, op
 
   // 随机生成邮箱
   if (path === '/api/generate') {
+    // B9: 速率限制
+    const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
+    if (!checkRateLimit('generate:' + clientIP)) {
+      return errorResponse('请求过于频繁，请稍后再试', 429);
+    }
     const lengthParam = Number(url.searchParams.get('length') || 0);
     const randomId = generateRandomId(lengthParam || undefined);
     const domains = isMock ? MOCK_DOMAINS : (Array.isArray(mailDomains) ? mailDomains : [(mailDomains || 'temp.example.com')]);
-    const domainIdx = Math.max(0, Math.min(domains.length - 1, Number(url.searchParams.get('domainIndex') || 0)));
+    const domainParam = url.searchParams.get('domainIndex');
+    const domainIdx = (domainParam === null || domainParam === '' || Number(domainParam) < 0) ? Math.floor(Math.random() * domains.length) : Math.max(0, Math.min(domains.length - 1, Number(domainParam)));
     const chosenDomain = domains[domainIdx] || domains[0];
     const email = `${randomId}@${chosenDomain}`;
     
@@ -69,7 +100,7 @@ export async function handleMailboxesApi(request, db, mailDomains, url, path, op
         const valid = /^[a-z0-9._-]{1,64}$/i.test(local);
         if (!valid) return errorResponse('非法用户名', 400);
         const domains = MOCK_DOMAINS;
-        const domainIdx = Math.max(0, Math.min(domains.length - 1, Number(body.domainIndex || 0)));
+        const domainIdx = (body.domainIndex === undefined || body.domainIndex === null || Number(body.domainIndex) < 0) ? Math.floor(Math.random() * domains.length) : Math.max(0, Math.min(domains.length - 1, Number(body.domainIndex)));
         const chosenDomain = domains[domainIdx] || domains[0];
         const email = `${local}@${chosenDomain}`;
         return Response.json({ email, expires: Date.now() + 3600000 });
@@ -82,7 +113,7 @@ export async function handleMailboxesApi(request, db, mailDomains, url, path, op
       const valid = /^[a-z0-9._-]{1,64}$/i.test(local);
       if (!valid) return errorResponse('非法用户名', 400);
       const domains = Array.isArray(mailDomains) ? mailDomains : [(mailDomains || 'temp.example.com')];
-      const domainIdx = Math.max(0, Math.min(domains.length - 1, Number(body.domainIndex || 0)));
+      const domainIdx = (body.domainIndex === undefined || body.domainIndex === null || Number(body.domainIndex) < 0) ? Math.floor(Math.random() * domains.length) : Math.max(0, Math.min(domains.length - 1, Number(body.domainIndex)));
       const chosenDomain = domains[domainIdx] || domains[0];
       const email = `${local}@${chosenDomain}`;
       

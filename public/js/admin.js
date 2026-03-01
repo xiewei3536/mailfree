@@ -1,4 +1,6 @@
 /**
+
+function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
  * 管理员页面
  * @module admin
  */

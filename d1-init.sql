@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS messages (
   r2_object_key TEXT NOT NULL DEFAULT '',
   received_at TEXT DEFAULT CURRENT_TIMESTAMP,
   is_read INTEGER DEFAULT 0,
-  FOREIGN KEY(mailbox_id) REFERENCES mailboxes(id)
+  FOREIGN KEY(mailbox_id) REFERENCES mailboxes(id) ON DELETE CASCADE
 );
 
 -- 用户表
@@ -80,7 +80,8 @@ CREATE TABLE IF NOT EXISTS sent_emails (
 -- mailboxes 索引
 CREATE INDEX IF NOT EXISTS idx_mailboxes_address ON mailboxes(address);
 CREATE INDEX IF NOT EXISTS idx_mailboxes_is_pinned ON mailboxes(is_pinned DESC);
-CREATE INDEX IF NOT EXISTS idx_mailboxes_address_created ON mailboxes(address, created_at DESC);
+-- B4: 移除冗餘索引（idx_mailboxes_address 已覆蓋 address 前綴查詢）
+-- CREATE INDEX IF NOT EXISTS idx_mailboxes_address_created ON mailboxes(address, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_mailboxes_is_favorite ON mailboxes(is_favorite DESC);
 
 -- messages 索引

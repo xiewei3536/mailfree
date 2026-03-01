@@ -39,16 +39,25 @@ export function setDomains(list) {
 export function populateDomains(domainList, selectElement) {
   if (!selectElement) return;
   const list = Array.isArray(domainList) ? domainList : [];
-  selectElement.innerHTML = list.map((d, i) => `<option value="${i}">${d}</option>`).join('');
+  selectElement.innerHTML = '<option value="-1">🎲 随机域名</option>' + list.map((d, i) => `<option value="${i}">${d}</option>`).join('');
   
   const stored = localStorage.getItem(STORAGE_KEYS.domain) || '';
-  const idx = stored ? list.indexOf(stored) : -1;
-  selectElement.selectedIndex = idx >= 0 ? idx : 0;
+  if (stored === '__random__') {
+    selectElement.value = '-1';
+  } else {
+    const idx = stored ? list.indexOf(stored) : -1;
+    selectElement.selectedIndex = idx >= 0 ? idx + 1 : 0;
+  }
   
   selectElement.addEventListener('change', () => {
-    const opt = selectElement.options[selectElement.selectedIndex];
-    if (opt) localStorage.setItem(STORAGE_KEYS.domain, opt.textContent || '');
-  }, { once: true });
+    const val = selectElement.value;
+    if (val === '-1') {
+      localStorage.setItem(STORAGE_KEYS.domain, '__random__');
+    } else {
+      const opt = selectElement.options[selectElement.selectedIndex];
+      if (opt) localStorage.setItem(STORAGE_KEYS.domain, opt.textContent || '');
+    }
+  });
   
   setDomains(list);
 }
@@ -135,7 +144,8 @@ export function saveLength(length) {
  * @returns {number}
  */
 export function getSelectedDomainIndex(selectElement) {
-  return Number(selectElement?.value || 0);
+  const val = Number(selectElement?.value ?? 0);
+  return val;
 }
 
 /**

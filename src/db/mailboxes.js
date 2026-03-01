@@ -41,23 +41,18 @@ export async function getOrCreateMailboxId(db, address) {
   }
   if (!local_part || !domain) throw new Error('无效的邮箱地址');
   
-  // 再次查询数据库（避免并发创建）
-  const existing = await db.prepare('SELECT id FROM mailboxes WHERE address = ? LIMIT 1').bind(normalized).all();
-  if (existing.results && existing.results.length > 0) {
-    const id = existing.results[0].id;
-    updateMailboxIdCache(normalized, id);
-    await db.prepare('UPDATE mailboxes SET last_accessed_at = CURRENT_TIMESTAMP WHERE id = ?').bind(id).run();
-    return id;
-  }
-  
-  // 创建新邮箱
+  // 修复：使用 INSERT OR IGNORE 避免併發衝突
   await db.prepare(
-    'INSERT INTO mailboxes (address, local_part, domain, password_hash, last_accessed_at) VALUES (?, ?, ?, NULL, CURRENT_TIMESTAMP)'
+    'INSERT OR IGNORE INTO mailboxes (address, local_part, domain, password_hash, last_accessed_at) VALUES (?, ?, ?, NULL, CURRENT_TIMESTAMP)'
   ).bind(normalized, local_part, domain).run();
   
-  // 查询新创建的ID
+  // 查询 ID（无论是新建还是已存在）
   const created = await db.prepare('SELECT id FROM mailboxes WHERE address = ? LIMIT 1').bind(normalized).all();
+  if (!created.results || !created.results.length) throw new Error('邮箱创建失败');
   const newId = created.results[0].id;
+  
+  // 更新访问时间
+  await db.prepare('UPDATE mailboxes SET last_accessed_at = CURRENT_TIMESTAMP WHERE id = ?').bind(newId).run();
   
   // 更新缓存
   updateMailboxIdCache(normalized, newId);

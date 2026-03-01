@@ -93,10 +93,12 @@ async function showToast(message, type = 'info', duration = 3000) {
     const html = tpl
       .replace('{{type}}', String(type || 'info'))
       .replace('{{icon}}', icon)
-      .replace('{{message}}', String(message || ''));
+      .replace('{{message}}', '');
     
     const wrapper = document.createElement('div');
     wrapper.innerHTML = html;
+    const msgEl = wrapper.querySelector('.toast-message');
+    if (msgEl) msgEl.textContent = String(message || '');
     
     // 注入样式（仅一次）
     const styleEl = wrapper.querySelector('#toast-style');
@@ -125,7 +127,8 @@ async function showToast(message, type = 'info', duration = 3000) {
     // 降级到简易toast
     const div = document.createElement('div');
     div.className = `toast-item ${type}`;
-    div.innerHTML = `<span class="toast-icon">${ICON_MAP[type] || ICON_MAP.info}</span><span class="toast-message">${message}</span>`;
+    div.innerHTML = `<span class="toast-icon">${ICON_MAP[type] || ICON_MAP.info}</span><span class="toast-message"></span>`;
+    div.querySelector('.toast-message').textContent = message;
     
     const container = ensureToastContainer();
     container.appendChild(div);
